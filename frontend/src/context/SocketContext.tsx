@@ -1,5 +1,5 @@
 import Peer from "peerjs";
-import { createContext, useEffect, useReducer, useState } from "react";
+import { createContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SocketIoClient from "socket.io-client";
 import { v4 as UUIDv4 } from "uuid";
@@ -21,6 +21,7 @@ export const SocketProvider: React.FC<Props> = ({ children }) => {
   const navigate = useNavigate();
 
   const [user, setUser] = useState<Peer>(); // new peer user
+  const [stream, setStream] = useState<MediaStream>();
 
   const fetchParticipantsList = ({
     roomId,
@@ -32,6 +33,15 @@ export const SocketProvider: React.FC<Props> = ({ children }) => {
     console.log("Fetched room participants");
     console.log(roomId, participants);
   };
+
+  const fetchUserFeed = async () => {
+    const response = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true,
+    });
+
+    setStream(response);
+  };
   useEffect(() => {
     const userId = UUIDv4();
     const newPeer = new Peer(userId, {
@@ -41,6 +51,7 @@ export const SocketProvider: React.FC<Props> = ({ children }) => {
     });
 
     setUser(newPeer);
+    fetchUserFeed();
 
     const enterRoom = ({ roomId }: { roomId: string }) => {
       navigate(`/room/${roomId}`);
@@ -49,10 +60,10 @@ export const SocketProvider: React.FC<Props> = ({ children }) => {
     socket.on("room-created", enterRoom); //* will redirect user to the room page once server has create new room
 
     socket.on("get-users", fetchParticipantsList);
-  },[]);
+  }, []);
 
   return (
-    <SocketContext.Provider value={{ socket, user }}>
+    <SocketContext.Provider value={{ socket, user, stream }}>
       {children}
     </SocketContext.Provider>
   );
